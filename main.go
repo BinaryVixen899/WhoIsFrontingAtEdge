@@ -24,7 +24,7 @@ func main() {
 		}
 
 		// If request is to the `/` path...
-		if r.URL.Path == "/" {
+		if r.URL.Path == "/Fronting?" {
 			// Below are some common patterns for Compute@Edge services using TinyGo.
 			// Head to https://developer.fastly.com/learning/compute/go/ to discover more.
 
@@ -67,9 +67,47 @@ func main() {
 			// Send a default synthetic response.
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-			fmt.Fprintln(w, `<iframe src="https://developer.fastly.com/compute-welcome" style="border:0; position: absolute; top: 0; left: 0; width: 100%; height: 100%"></iframe>`)
+			fmt.Fprintln(w, `
+			<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+				<meta http-equiv="X-UA-Compatible" content="IE=edge">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>Document</title>
+			</head>
+			<body>
+			<p>"In the actual version this will say who is in front!"</p>
+				
+			</body>
+			</html>`)
 			return
+		} else if r.URL.Path == "/" {
+
+			if r.Method != "HEAD" && r.Method != "GET" {
+				w.WriteHeader(fsthttp.StatusMethodNotAllowed)
+				fmt.Fprintf(w, "This method is not allowed\n")
+				return
+			}
+			// Setting a default synthetic response
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			fmt.Fprintln(w, `
+			<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+				<meta http-equiv="X-UA-Compatible" content="IE=edge">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>Document</title>
+			</head>
+			<body>
+			<p>"But nothing happened!"</p>
+				
+			</body>
+			</html>`)
+
 		}
+		// TODO: Put a magicarp picture above!
 
 		// Catch all other requests and return a 404.
 		w.WriteHeader(fsthttp.StatusNotFound)
