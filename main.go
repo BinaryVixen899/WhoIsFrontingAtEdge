@@ -28,10 +28,6 @@ func main() {
 		// If request is to the `/` path...
 		if r.URL.Path == "/Fronting" {
 			// Create a new request.
-			req, err := fsthttp.NewRequest("GET", "https://example.com", nil)
-			if err != nil {
-				// Handle Error
-			}
 
 			// Add request headers.
 			// req.Header.Set("Custom-Header", "Welcome to Compute@Edge!")
@@ -44,13 +40,6 @@ func main() {
 			// req.CacheOptions.TTL = 60
 
 			// Forward the request to a backend named "TheOrigin".
-			resp, err := req.Send(ctx, "TheOrigin")
-
-			if err != nil {
-				w.WriteHeader(fsthttp.StatusBadGateway)
-				fmt.Fprintln(w, err)
-				return
-			}
 
 			currentfronter := GetCurrentFronter()
 			if currentfronter != "" {
