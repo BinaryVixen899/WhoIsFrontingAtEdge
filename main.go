@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/fastly/compute-sdk-go/fsthttp"
+	"github.com/starshine-sys/pkgo"
 )
 
 // The entry point for your application.
@@ -16,6 +17,7 @@ import (
 
 func main() {
 	fsthttp.ServeFunc(func(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
+
 		// Filter requests that have unexpected methods.
 		if r.Method != "HEAD" && r.Method != "GET" {
 			w.WriteHeader(fsthttp.StatusMethodNotAllowed)
@@ -24,15 +26,12 @@ func main() {
 		}
 
 		// If request is to the `/` path...
-		if r.URL.Path == "/Fronting?" {
-			// Below are some common patterns for Compute@Edge services using TinyGo.
-			// Head to https://developer.fastly.com/learning/compute/go/ to discover more.
-
+		if r.URL.Path == "/Fronting" {
 			// Create a new request.
-			// req, err := fsthttp.NewRequest("GET", "https://example.com", nil)
-			// if err != nil {
-			//   // Handle Error
-			// }
+			req, err := fsthttp.NewRequest("GET", "https://example.com", nil)
+			if err != nil {
+				// Handle Error
+			}
 
 			// Add request headers.
 			// req.Header.Set("Custom-Header", "Welcome to Compute@Edge!")
@@ -45,12 +44,34 @@ func main() {
 			// req.CacheOptions.TTL = 60
 
 			// Forward the request to a backend named "TheOrigin".
-			// resp, err := req.Send(ctx, "TheOrigin")
-			// if err != nil {
-			//	 w.WriteHeader(fsthttp.StatusBadGateway)
-			//	 fmt.Fprintln(w, err)
-			//	 return
-			// }
+			resp, err := req.Send(ctx, "TheOrigin")
+
+			if err != nil {
+				w.WriteHeader(fsthttp.StatusBadGateway)
+				fmt.Fprintln(w, err)
+				return
+			}
+
+			currentfronter := GetCurrentFronter()
+			if currentfronter != "" {
+				fronter := fmt.Sprintf(`
+				<!DOCTYPE html>
+				<html lang="en">
+				<head>
+					<meta charset="UTF-8">
+					<meta http-equiv="X-UA-Compatible" content="IE=edge">
+					<meta name="viewport" content="width=device-width, initial-scale=1.0">
+					<title>Document</title>
+				</head>
+				<body>
+				<p>"The current fronter is: %f!"</p>
+					
+				</body>
+				</html>`, currentfronter)
+				fmt.Fprintln(w, fronter)
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+			}
 
 			// Remove response headers.
 			// resp.Header.Del("Yet-Another-Custom-Header")
@@ -65,22 +86,7 @@ func main() {
 			// fmt.Fprintln(endpoint, "Hello from the edge!")
 
 			// Send a default synthetic response.
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-			fmt.Fprintln(w, `
-			<!DOCTYPE html>
-			<html lang="en">
-			<head>
-				<meta charset="UTF-8">
-				<meta http-equiv="X-UA-Compatible" content="IE=edge">
-				<meta name="viewport" content="width=device-width, initial-scale=1.0">
-				<title>Document</title>
-			</head>
-			<body>
-			<p>"In the actual version this will say who is in front!"</p>
-				
-			</body>
-			</html>`)
 			return
 		} else if r.URL.Path == "/" {
 
@@ -113,4 +119,20 @@ func main() {
 		w.WriteHeader(fsthttp.StatusNotFound)
 		fmt.Fprintf(w, "The page you requested could not be found\n")
 	})
+}
+
+func GetCurrentFronter() string {
+	// DO NOT COMMIT UNTIL YOU VERIFY PRIVACY SETTINGS
+	sysID := "REDACTED"
+
+	pk := pkgo.New("")
+	front, err := pk.Fronters(sysID)
+	if err != nil {
+		// Change this later
+		print("There has been an error!")
+		return ""
+	}
+	frontingmembername := front.Members[0].Name
+	return frontingmembername
+
 }
