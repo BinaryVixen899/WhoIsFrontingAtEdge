@@ -56,7 +56,7 @@ func main() {
 
 			if currentfronter != nil {
 				currentfronter_string := fmt.Sprintf("%s", currentfronter)
-				fmt.Sprintf(`
+				fmt.Fprintf(w, `
 				<!DOCTYPE html>
 				<html lang="en">
 				<head>
@@ -66,7 +66,7 @@ func main() {
 					<title>Document</title>
 				</head>
 				<body>
-				<p>"The current fronter is: %f!"</p>
+				<p>"The current fronter is: %s!"</p>
 					
 				</body>
 				</html>`, currentfronter_string)
@@ -117,8 +117,6 @@ func main() {
 			</html>`)
 			// I'm pretty sure we need a return here
 
-			return
-
 		}
 		// TODO: Put a magicarp picture above!
 
@@ -135,6 +133,14 @@ func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
 	// sysID := "rzwbg "
 
 	req, err := fsthttp.NewRequest("GET", "https://api.pluralkit.me/v2/systems/rzwbg/fronters", nil)
+	if err != nil {
+		print("Oh no there has been an error when constructing the request!")
+		//TODO: Customize this to write a different status
+		// w.WriteHeader(fsthttp.StatusBadGateway)
+		//fmt.Fprintln(w, err.Error())
+		print(err.Error())
+		return nil, err
+	}
 	req.Header.Set("accept", "*/*")
 	//TODO: Figure out the default user-agent
 	req.Header.Set("user-agent", "curl/7.84.0")
