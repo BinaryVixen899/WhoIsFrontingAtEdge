@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/fastly/compute-sdk-go/fsthttp"
-	"github.com/starshine-sys/pkgo"
+	"github.com/valyala/fastjson"
 )
 
 // The entry point for your application.
@@ -14,6 +15,9 @@ import (
 // used to route based on the request properties (such as method or path), send
 // the request to a backend, make completely new requests, and/or generate
 // synthetic responses.
+
+//TODO: Change this later to our actual backend
+const BackendName = "origin_0"
 
 func main() {
 	fsthttp.ServeFunc(func(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
@@ -41,9 +45,18 @@ func main() {
 
 			// Forward the request to a backend named "TheOrigin".
 
-			currentfronter := GetCurrentFronter()
-			if currentfronter != "" {
-				fronter := fmt.Sprintf(`
+			//Should probably do a pointer here
+			currentfronter, err := GetCurrentFronter(ctx)
+			// Let's parse this into a string unless there's an error
+			if err != nil {
+				println("Well that didn't work out as expected")
+				print(err.Error())
+				// TODO: All the error handling logic
+			}
+
+			if currentfronter != nil {
+				currentfronter_string := fmt.Sprintf("%s", currentfronter)
+				fmt.Sprintf(`
 				<!DOCTYPE html>
 				<html lang="en">
 				<head>
@@ -56,9 +69,10 @@ func main() {
 				<p>"The current fronter is: %f!"</p>
 					
 				</body>
-				</html>`, currentfronter)
-				fmt.Fprintln(w, fronter)
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				</html>`, currentfronter_string)
+
+				// fmt.Fprintln(w, fronter)
+				// w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 			}
 
@@ -74,16 +88,17 @@ func main() {
 			// endpoint := rtlog.Open("my_endpoint")
 			// fmt.Fprintln(endpoint, "Hello from the edge!")
 
-			// Send a default synthetic response.
-
 			return
 		} else if r.URL.Path == "/" {
 
+			//We're using this so much we might as well just make it a method
 			if r.Method != "HEAD" && r.Method != "GET" {
 				w.WriteHeader(fsthttp.StatusMethodNotAllowed)
 				fmt.Fprintf(w, "This method is not allowed\n")
 				return
 			}
+
+			// TODO: set status code here as well
 			// Setting a default synthetic response
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			fmt.Fprintln(w, `
@@ -100,6 +115,9 @@ func main() {
 				
 			</body>
 			</html>`)
+			// I'm pretty sure we need a return here
+
+			return
 
 		}
 		// TODO: Put a magicarp picture above!
@@ -110,18 +128,50 @@ func main() {
 	})
 }
 
-func GetCurrentFronter() string {
-	// DO NOT COMMIT UNTIL YOU VERIFY PRIVACY SETTINGS
-	sysID := "rzwbg "
+func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
+	//TODO: Return some value for
 
-	pk := pkgo.New("")
-	front, err := pk.Fronters(sysID)
+	// TODO: Read this in from somewhere
+	// sysID := "rzwbg "
+
+	req, err := fsthttp.NewRequest("GET", "https://api.pluralkit.me/v2/systems/rzwbg/fronters", nil)
+	req.Header.Set("accept", "*/*")
+	//TODO: Figure out the default user-agent
+	req.Header.Set("user-agent", "curl/7.84.0")
+	resp, err := req.Send(ctx, BackendName)
 	if err != nil {
-		// Change this later
-		print("There has been an error!")
-		return ""
+		print("Oh no there has been an error when retrieving the primary fronter from pluralkit!")
+		//TODO: Customize this to write a different status
+		// TODO: bubble this up
+		// w.WriteHeader(fsthttp.StatusBadGateway)
+		//fmt.Fprintln(w, err.Error())
+		print(err.Error())
+		return nil, err
 	}
-	frontingmembername := front.Members[0].Name
-	return frontingmembername
+
+	// Read the backend response body
+	// This will read everything into memory so we only want to do it if we know that it is small
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		print("There's been an error when reading the backend response body into json!")
+		print(err.Error())
+		return nil, err
+
+	}
+
+	// Parse some Json
+	var p fastjson.Parser
+	response_body_json, err := p.ParseBytes(body)
+	if err != nil {
+		print("There's been an error when parsing the response into JSON!")
+		print(err.Error())
+		return nil, err
+	}
+
+	// Get the Fronting Member JSON
+	fronting_member_json := response_body_json.Get("members", "0", "name")
+
+	// Transform that JSON into a string
+	return fronting_member_json, nil
 
 }
