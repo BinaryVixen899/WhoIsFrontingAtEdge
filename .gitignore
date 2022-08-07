@@ -21,3 +21,4 @@
 go.work
 bin/main.wasm
 pkg/WhoisFrontingAtEdge.tar.gz
+__debug_bin
