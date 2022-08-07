@@ -112,7 +112,7 @@ func main() {
 
 func GetCurrentFronter() string {
 	// DO NOT COMMIT UNTIL YOU VERIFY PRIVACY SETTINGS
-	sysID := "REDACTED"
+	sysID := "rzwbg "
 
 	pk := pkgo.New("")
 	front, err := pk.Fronters(sysID)
