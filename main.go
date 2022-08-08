@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 
@@ -55,8 +56,25 @@ func main() {
 			}
 
 			if currentfronter != nil {
-				currentfronter_string := fmt.Sprintf("%s", currentfronter)
-				fmt.Fprintf(w, `
+				if r.Header.Get("Accept") == "application/json" {
+					//TODO: Calculate the content length
+					w.Header().Add("Content-Type", "application/json")
+
+					// Oh right, we have to serialize it into bytes duh
+					currentfronterbytes, err := currentfronter.StringBytes()
+					if err != nil {
+						w.WriteHeader(fsthttp.StatusInternalServerError)
+						print(err.Error())
+					}
+					// WYR: All we need to now is find the size and set content-length to it
+					contentlengthint := binary.Size(currentfronterbytes)
+					contentlength := string(contentlengthint)
+					w.Header().Add("Content-Length", contentlength)
+					w.Write(currentfronterbytes)
+
+				} else {
+					currentfronter_string := fmt.Sprintf("%s", currentfronter)
+					fmt.Fprintf(w, `
 				<!DOCTYPE html>
 				<html lang="en">
 				<head>
@@ -71,16 +89,8 @@ func main() {
 				</body>
 				</html>`, currentfronter_string)
 
-				// fmt.Fprintln(w, fronter)
-				// w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
+				}
 			}
-
-			// Remove response headers.
-			// resp.Header.Del("Yet-Another-Custom-Header")
-
-			// Copy all headers from the response.
-			// w.Header().Reset(resp.Header.Clone())
 
 			// Log to a Fastly endpoint.
 			// NOTE: You will need to import "github.com/fastly/compute-sdk-go/rtlog"
@@ -143,7 +153,7 @@ func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
 	}
 	req.Header.Set("accept", "*/*")
 	//TODO: Figure out the default user-agent
-	req.Header.Set("user-agent", "curl/7.84.0")
+	// req.Header.Set("user-agent", "curl/7.84.0")
 	resp, err := req.Send(ctx, BackendName)
 	if err != nil {
 		print("Oh no there has been an error when retrieving the primary fronter from pluralkit!")
