@@ -10,16 +10,9 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-// The entry point for your application.
-//
-// Use this function to define your main request handling logic. It could be
-// used to route based on the request properties (such as method or path), send
-// the request to a backend, make completely new requests, and/or generate
-// synthetic responses.
-
-//TODO: Change this later to our actual backend
 const BackendName = "origin_0"
 
+// Our entry point
 func main() {
 	fsthttp.ServeFunc(func(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
 
@@ -27,6 +20,7 @@ func main() {
 		if r.Method != "HEAD" && r.Method != "GET" {
 			w.WriteHeader(fsthttp.StatusMethodNotAllowed)
 			fmt.Fprintf(w, "This method is not allowed\n")
+			println("Yup, we're hitting the method not allowed thingy")
 			return
 		}
 
@@ -34,25 +28,13 @@ func main() {
 		if r.URL.Path == "/Fronting" {
 			// Create a new request.
 
-			// Add request headers.
-			// req.Header.Set("Custom-Header", "Welcome to Compute@Edge!")
-			// req.Header.Set(
-			//   "Another-Custom-Header",
-			//   "Recommended reading: https://developer.fastly.com/learning/compute"
-			// )
-
-			// Override cache TTL.
-			// req.CacheOptions.TTL = 60
-
-			// Forward the request to a backend named "TheOrigin".
-
 			//Should probably do a pointer here
 			currentfronter, err := GetCurrentFronter(ctx)
 			// Let's parse this into a string unless there's an error
 			if err != nil {
 				println("Well that didn't work out as expected")
 				print(err.Error())
-				// TODO: All the error handling logic
+				// TODO: All the error handling logic, such as actually returning 500s
 			}
 
 			if currentfronter != nil {
@@ -154,6 +136,10 @@ func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
 	req.Header.Set("accept", "*/*")
 	//TODO: Figure out the default user-agent
 	// req.Header.Set("user-agent", "curl/7.84.0")
+
+	// Set the cache to pass
+	req.CacheOptions.Pass = true
+
 	resp, err := req.Send(ctx, BackendName)
 	if err != nil {
 		print("Oh no there has been an error when retrieving the primary fronter from pluralkit!")
