@@ -159,8 +159,8 @@ func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
 		print(err.Error())
 		return nil, err
 	}
-	print(body)
-
+	responsestring := string(body)
+	println(responsestring)
 	// Parse some Json
 	var p fastjson.Parser
 	response_body_json, err := p.ParseBytes(body)
