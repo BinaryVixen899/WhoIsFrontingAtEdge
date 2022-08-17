@@ -10,7 +10,7 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-const BackendName = "origin_0"
+const BackendName = "Pluralkit"
 
 // Our entry point
 func main() {
