@@ -138,13 +138,26 @@ func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
 	// req.Header.Set("user-agent", "curl/7.84.0")
 
 	// Set the cache to pass
+	req.Header.Set("Host", "api.pluralkit.me")
 	req.CacheOptions.Pass = true
+
+	// Print statement logging of the whole thing
+	fmt.Printf("Body: %v\n", req.Body)
+	fmt.Printf("host: %v\n", req.Host)
+	fmt.Printf("method: %v\n", req.Method)
+	fmt.Printf("TLSInfo: %v\n", req.TLSInfo)
+	fmt.Printf("url %v\n", req.URL)
+	fmt.Println("Headers")
+	for key, value := range req.Header {
+		fmt.Println(key, value)
+	}
 
 	resp, err := req.Send(ctx, BackendName)
 	if err != nil {
 		print("Oh no there has been an error when retrieving the primary fronter from pluralkit!")
 		//TODO: Customize this to write a different status
 		// TODO: bubble this up
+		// TODO: Make sure that if the body isn't what we expect we throw an error
 		// w.WriteHeader(fsthttp.StatusBadGateway)
 		//fmt.Fprintln(w, err.Error())
 		print(err.Error())
