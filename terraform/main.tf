@@ -12,7 +12,7 @@ resource "fastly_service_compute" "api_kitsune_gay" {
     activate = true
     name = "api.kitsune.gay"
     comment = "api sewvice fow a cewtain focks"
-    version_comment = "Changing Backend to use HTTPS"
+    version_comment = "Allegedly Working Fastly.toml"
     backend {
       address = "https://api.pluralkit.me"
     # DO NOT CHANGE THE NAME OR YOU WILL RECREATE THE BACKEND
