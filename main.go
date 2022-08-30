@@ -20,7 +20,6 @@ func main() {
 		if r.Method != "HEAD" && r.Method != "GET" {
 			w.WriteHeader(fsthttp.StatusMethodNotAllowed)
 			fmt.Fprintf(w, "This method is not allowed\n")
-			println("Yup, we're hitting the method not allowed thingy")
 			return
 		}
 
@@ -28,13 +27,13 @@ func main() {
 		if r.URL.Path == "/Fronting" {
 			// Create a new request.
 
-			//Should probably do a pointer here
-			currentfronter, err := GetCurrentFronter(ctx)
+			currentfronter, err := GetCurrentFronter(&ctx)
 			// Let's parse this into a string unless there's an error
 			if err != nil {
-				println("Well that didn't work out as expected")
-				print(err.Error())
+				print("Getting the current fronter didn't work out as expected", err.Error())
 				// TODO: All the error handling logic, such as actually returning 500s
+				// If you wrote 3 AM code, using returns to make sure you don't go on executing other code by accident is a great strategy!
+				return
 			}
 
 			if currentfronter != nil {
@@ -42,19 +41,21 @@ func main() {
 					//TODO: Calculate the content length
 					w.Header().Add("Content-Type", "application/json")
 
-					// Oh right, we have to serialize it into bytes duh
+					// Serialize it into bytes
 					currentfronterbytes, err := currentfronter.StringBytes()
 					if err != nil {
 						w.WriteHeader(fsthttp.StatusInternalServerError)
-						print(err.Error())
+						print("There was an issue serializing into bytes", err.Error())
 					}
-					// WYR: All we need to now is find the size and set content-length to it
 					contentlengthint := binary.Size(currentfronterbytes)
 					contentlength := string(contentlengthint)
 					w.Header().Add("Content-Length", contentlength)
 					w.Write(currentfronterbytes)
+					return
 
 				} else {
+					// TODO: Figure out why String() wont' work here
+					// TODO: Way better webpage
 					currentfronter_string := fmt.Sprintf("%s", currentfronter)
 					fmt.Fprintf(w, `
 				<!DOCTYPE html>
@@ -73,17 +74,14 @@ func main() {
 
 				}
 			}
-
+			// TODO: Implement logging and send to
 			// Log to a Fastly endpoint.
 			// NOTE: You will need to import "github.com/fastly/compute-sdk-go/rtlog"
 			// for this to work
 			// endpoint := rtlog.Open("my_endpoint")
 			// fmt.Fprintln(endpoint, "Hello from the edge!")
-
-			return
 		} else if r.URL.Path == "/" {
 
-			//We're using this so much we might as well just make it a method
 			if r.Method != "HEAD" && r.Method != "GET" {
 				w.WriteHeader(fsthttp.StatusMethodNotAllowed)
 				fmt.Fprintf(w, "This method is not allowed\n")
@@ -107,8 +105,7 @@ func main() {
 				
 			</body>
 			</html>`)
-			// I'm pretty sure we need a return here
-
+			return
 		}
 		// TODO: Put a magicarp picture above!
 
@@ -118,7 +115,7 @@ func main() {
 	})
 }
 
-func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
+func GetCurrentFronter(ctx *context.Context) (*fastjson.Value, error) {
 	//TODO: Return some value for
 
 	// TODO: Read this in from somewhere
@@ -152,7 +149,7 @@ func GetCurrentFronter(ctx context.Context) (*fastjson.Value, error) {
 		fmt.Println(key, value)
 	}
 
-	resp, err := req.Send(ctx, BackendName)
+	resp, err := req.Send(*ctx, BackendName)
 	if err != nil {
 		print("Oh no there has been an error when retrieving the primary fronter from pluralkit!")
 		//TODO: Customize this to write a different status
