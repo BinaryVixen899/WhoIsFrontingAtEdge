@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/fastly/compute-sdk-go/fsthttp"
+	"github.com/fastly/compute-sdk-go/rtlog"
 	"github.com/valyala/fastjson"
 )
 
@@ -15,22 +16,26 @@ const BackendName = "Pluralkit"
 // Our entry point
 func main() {
 	fsthttp.ServeFunc(func(ctx context.Context, w fsthttp.ResponseWriter, r *fsthttp.Request) {
-
+		endpoint := rtlog.Open("API.Kitsune.Gay")
 		// Filter requests that have unexpected methods.
 		if r.Method != "HEAD" && r.Method != "GET" {
 			w.WriteHeader(fsthttp.StatusMethodNotAllowed)
-			fmt.Fprintf(w, "This method is not allowed\n")
+			fmt.Fprintf(endpoint, "This method is not allowed\n")
 			return
 		}
 
 		// If request is to the `/` path...
-		if r.URL.Path == "/Fronting" {
+		if r.URL.Path == "/Fronting" || r.URL.Path == "/fronting" {
 			// Create a new request.
 
-			currentfronter, err := GetCurrentFronter(&ctx, &w)
+			currentfronter, err := GetCurrentFronter(&ctx, &w, endpoint)
 			// Let's parse this into a string unless there's an error
 			if err != nil {
-				print("Getting the current fronter didn't work out as expected", err.Error())
+				print("Getting the current fronter didn't work out as expected")
+				w.WriteHeader(fsthttp.StatusInternalServerError)
+				fmt.Fprintf(endpoint, err.Error())
+				// At this point if it fails it's failed at the last step and let's assume this is on us
+
 				// TODO: All the error handling logic, such as actually returning 500s
 				// If you wrote 3 AM code, using returns to make sure you don't go on executing other code by accident is a great strategy!
 				return
@@ -76,15 +81,13 @@ func main() {
 			}
 			// TODO: Implement logging and send to
 			// Log to a Fastly endpoint.
-			// NOTE: You will need to import "github.com/fastly/compute-sdk-go/rtlog"
-			// for this to work
-			// endpoint := rtlog.Open("my_endpoint")
+
 			// fmt.Fprintln(endpoint, "Hello from the edge!")
 		} else if r.URL.Path == "/" {
 
 			if r.Method != "HEAD" && r.Method != "GET" {
 				w.WriteHeader(fsthttp.StatusMethodNotAllowed)
-				fmt.Fprintf(w, "This method is not allowed\n")
+				fmt.Fprintf(endpoint, "This method is not allowed\n")
 				return
 			}
 
@@ -111,11 +114,11 @@ func main() {
 
 		// Catch all other requests and return a 404.
 		w.WriteHeader(fsthttp.StatusNotFound)
-		fmt.Fprintf(w, "The page you requested could not be found\n")
+		fmt.Fprintf(endpoint, "The page you requested could not be found\n")
 	})
 }
 
-func GetCurrentFronter(ctx *context.Context, w *fsthttp.ResponseWriter) (*fastjson.Value, error) {
+func GetCurrentFronter(ctx *context.Context, w *fsthttp.ResponseWriter, endpoint *rtlog.Endpoint) (*fastjson.Value, error) {
 	//TODO: Return some value for
 
 	// TODO: Read this in from somewhere
@@ -126,7 +129,7 @@ func GetCurrentFronter(ctx *context.Context, w *fsthttp.ResponseWriter) (*fastjs
 		print("Oh no there has been an error when constructing the request!")
 		//TODO: Customize this to write a different status
 		wrtr.WriteHeader(fsthttp.StatusBadGateway)
-		fmt.Fprintln(wrtr, err.Error())
+		fmt.Fprintln(endpoint, err.Error())
 		print(err.Error())
 		return nil, err
 	}
@@ -156,7 +159,7 @@ func GetCurrentFronter(ctx *context.Context, w *fsthttp.ResponseWriter) (*fastjs
 		// TODO: Make sure that if the body isn't what we expect we throw an error
 		wrtr.WriteHeader(fsthttp.StatusBadGateway)
 		// TODO: Log here, we don't care about exposing this to the user
-		fmt.Fprintln(wrtr, err.Error())
+		fmt.Fprintln(endpoint, err.Error())
 		print(err.Error())
 		return nil, err
 	}
@@ -168,7 +171,7 @@ func GetCurrentFronter(ctx *context.Context, w *fsthttp.ResponseWriter) (*fastjs
 		wrtr.WriteHeader(fsthttp.StatusInternalServerError)
 		// TODO: Log here, we don't care about exposing this to the user
 		print("There's been an error when reading the backend response body into json!")
-		print(err.Error())
+		print(endpoint, err.Error())
 		return nil, err
 	}
 	responsestring := string(body)
@@ -180,7 +183,7 @@ func GetCurrentFronter(ctx *context.Context, w *fsthttp.ResponseWriter) (*fastjs
 		wrtr.WriteHeader(fsthttp.StatusInternalServerError)
 		// TODO: Log here, we don't care about exposing this to the user
 		print("There's been an error when parsing the response into JSON!")
-		print(err.Error())
+		print(endpoint, err.Error())
 		return nil, err
 	}
 
