@@ -27,7 +27,7 @@ func main() {
 		if r.URL.Path == "/Fronting" {
 			// Create a new request.
 
-			currentfronter, err := GetCurrentFronter(&ctx)
+			currentfronter, err := GetCurrentFronter(&ctx, &w)
 			// Let's parse this into a string unless there's an error
 			if err != nil {
 				print("Getting the current fronter didn't work out as expected", err.Error())
@@ -101,13 +101,13 @@ func main() {
 				<title>Document</title>
 			</head>
 			<body>
+			<img src="magikarp.png" alt ="Magikarp used Splash, ... but Nothing Happened!"
 			<p>"But nothing happened!"</p>
 				
 			</body>
 			</html>`)
 			return
 		}
-		// TODO: Put a magicarp picture above!
 
 		// Catch all other requests and return a 404.
 		w.WriteHeader(fsthttp.StatusNotFound)
@@ -115,23 +115,23 @@ func main() {
 	})
 }
 
-func GetCurrentFronter(ctx *context.Context) (*fastjson.Value, error) {
+func GetCurrentFronter(ctx *context.Context, w *fsthttp.ResponseWriter) (*fastjson.Value, error) {
 	//TODO: Return some value for
 
 	// TODO: Read this in from somewhere
 	// sysID := "rzwbg "
-
+	wrtr := *w
 	req, err := fsthttp.NewRequest("GET", "https://api.pluralkit.me/v2/systems/rzwbg/fronters", nil)
 	if err != nil {
 		print("Oh no there has been an error when constructing the request!")
 		//TODO: Customize this to write a different status
-		// w.WriteHeader(fsthttp.StatusBadGateway)
-		//fmt.Fprintln(w, err.Error())
+		wrtr.WriteHeader(fsthttp.StatusBadGateway)
+		fmt.Fprintln(wrtr, err.Error())
 		print(err.Error())
 		return nil, err
 	}
 	req.Header.Set("accept", "*/*")
-	//TODO: Figure out the default user-agent
+	//TODO: Figure out if a user agent gets sent by the caching layer, we want to be a good netizen after all!
 	// req.Header.Set("user-agent", "curl/7.84.0")
 
 	// Set the cache to pass
@@ -139,6 +139,7 @@ func GetCurrentFronter(ctx *context.Context) (*fastjson.Value, error) {
 	req.CacheOptions.Pass = true
 
 	// Print statement logging of the whole thing
+	// TODO: Log this instead of print logging it
 	fmt.Printf("Body: %v\n", req.Body)
 	fmt.Printf("host: %v\n", req.Host)
 	fmt.Printf("method: %v\n", req.Method)
@@ -152,11 +153,10 @@ func GetCurrentFronter(ctx *context.Context) (*fastjson.Value, error) {
 	resp, err := req.Send(*ctx, BackendName)
 	if err != nil {
 		print("Oh no there has been an error when retrieving the primary fronter from pluralkit!")
-		//TODO: Customize this to write a different status
-		// TODO: bubble this up
 		// TODO: Make sure that if the body isn't what we expect we throw an error
-		// w.WriteHeader(fsthttp.StatusBadGateway)
-		//fmt.Fprintln(w, err.Error())
+		wrtr.WriteHeader(fsthttp.StatusBadGateway)
+		// TODO: Log here, we don't care about exposing this to the user
+		fmt.Fprintln(wrtr, err.Error())
 		print(err.Error())
 		return nil, err
 	}
@@ -165,6 +165,8 @@ func GetCurrentFronter(ctx *context.Context) (*fastjson.Value, error) {
 	// This will read everything into memory so we only want to do it if we know that it is small
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		wrtr.WriteHeader(fsthttp.StatusInternalServerError)
+		// TODO: Log here, we don't care about exposing this to the user
 		print("There's been an error when reading the backend response body into json!")
 		print(err.Error())
 		return nil, err
@@ -175,6 +177,8 @@ func GetCurrentFronter(ctx *context.Context) (*fastjson.Value, error) {
 	var p fastjson.Parser
 	response_body_json, err := p.ParseBytes(body)
 	if err != nil {
+		wrtr.WriteHeader(fsthttp.StatusInternalServerError)
+		// TODO: Log here, we don't care about exposing this to the user
 		print("There's been an error when parsing the response into JSON!")
 		print(err.Error())
 		return nil, err
