@@ -7,10 +7,13 @@ language = "rust"
 manifest_version = 2
 name = "WhoisFrontingAtEdge"
 service_id = ""
-[backends]
-    [origin_0]
-        url = "https://api.pluralkit.me"
+
 [local_server]
-    [local_server.backends]
-        [local_server.backends.origin_0]
-            url = "https://api.pluralkit.me" 
+
+  [local_server.backends]
+    [local_server.backends.pluralkit]
+      url = "https://api.pluralkit.me"
+
+
+[scripts]
+  build = "cargo build --bin fastly-compute-project --release --target wasm32-wasi --color always"
