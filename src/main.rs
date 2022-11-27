@@ -91,14 +91,14 @@ fn main(req: Request) -> Result<Response, Error> {
             // So now we just need to handle this differently depending on if its someone asking for json or not
             // We can just destroy the reference otherwise because we don't rIeally care 
             let result = match req.get_header("Accept") {
-                Some(x) if x == "json" => Some(x),
+                Some(x) if x == "application/json" => Some(x),
                 _ => None,
             };
 
            if result.is_some() {
                 // Send json of the fronting member back to the client 
                 return Ok(Response::from_status(StatusCode::OK)
-                .with_body_json(&my_data.members[0]).expect("We are able to parse the JSON back")
+                .with_body_json(&my_data.members[0].name).expect("We are able to parse the JSON back")
                 .with_content_type(mime::APPLICATION_JSON)
                 );
            }
