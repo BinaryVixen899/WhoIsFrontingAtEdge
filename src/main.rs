@@ -1,9 +1,9 @@
 //! Adapted from the Default Compute@Edge template program.
 
-use std::string;
-use fastly::handle::CacheOverride;
+
+
 use fastly::http::{header, Method, StatusCode};
-use fastly::{mime, Error, Request, Response, Backend};
+use fastly::{mime, Error, Request, Response};
 
 #[derive(serde::Deserialize)]
 struct pkdata {
@@ -67,13 +67,13 @@ fn main(req: Request) -> Result<Response, Error> {
             // Checking for Send Errors 
             if let Err(e) = beresp {
                 // Log what we encountered
-                eprintln!("We've encountered a send error {}:", e.to_string());
+                eprintln!("We've encountered a send error {}:", e);
                 // Clearly state it's not our fault 
                 return Ok(Response::from_status(StatusCode::BAD_GATEWAY))    
             }
             // otherwise..
             let mut beresp = beresp.expect("To have handled an invalid send");
-            if beresp.get_status().is_success() == false
+            if !beresp.get_status().is_success()
             {
                 eprintln!("Instead of giving us a 200, PK gave us a {}", beresp.get_status());
                 return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE))
@@ -82,11 +82,11 @@ fn main(req: Request) -> Result<Response, Error> {
             
             let my_data = beresp.take_body_json::<pkdata>();
             if let Err(e) = my_data {
-                eprintln!("JSON PARSING FAILURE: {}", e.to_string());
+                eprintln!("JSON PARSING FAILURE: {}", e);
                 return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE))
             }
 
-            let mut my_data = my_data.expect("To have handled a case in which we had bad JSON data");
+            let my_data = my_data.expect("To have handled a case in which we had bad JSON data");
             
             // So now we just need to handle this differently depending on if its someone asking for json or not
             // We can just destroy the reference otherwise because we don't rIeally care 
@@ -97,10 +97,10 @@ fn main(req: Request) -> Result<Response, Error> {
 
            if result.is_some() {
                 // Send json of the fronting member back to the client 
-                return Ok(Response::from_status(StatusCode::OK)
+                Ok(Response::from_status(StatusCode::OK)
                 .with_body_json(&my_data.members[0].name).expect("We are able to parse the JSON back")
                 .with_content_type(mime::APPLICATION_JSON)
-                );
+                )
            }
 
            else {
