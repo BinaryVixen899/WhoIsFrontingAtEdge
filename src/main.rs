@@ -1,7 +1,7 @@
 //! Adapted from the Default Compute@Edge template program.
 
 use fastly::http::{header, request, Method, StatusCode};
-use fastly::{mime, Backend, Error, Request, Response};
+use fastly::{mime, object_store, Backend, Error, ObjectStore, Request, Response};
 
 #[derive(serde::Deserialize)]
 struct Pkdata {
@@ -48,6 +48,8 @@ fn main(req: Request) -> Result<Response, Error> {
                 .with_body(include_str!("butnothinghappened.html")))
         }
         "/fronting" => fronting(PLURALKIT_BACKEND, &req),
+
+        "/species" => species(&req),
 
         // Catch all other requests and return a magikarp 404.
         _ => Ok(Response::from_status(StatusCode::NOT_FOUND)
@@ -123,6 +125,55 @@ fn fronting(backend: &'static str, req: &Request) -> Result<Response, Error> {
 </body>
 </html>",
                     alter = my_data.members[0].name
+                )
+                .as_str(),
+            ));
+    }
+}
+
+fn species(req: &Request) -> Result<Response, Error> {
+    let foxbox = ObjectStore::open("foxbox").expect("We got an objectstore!");
+    let foxbox = foxbox.expect("The objectstore exists!");
+    let species = match foxbox.lookup("Species") {
+        Ok(s) => match s {
+            Some(s) => s.into_string(),
+
+            None => {
+                return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
+            }
+        },
+        Err(e) => {
+            return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
+        }
+    };
+
+    let result = match req.get_header("Accept") {
+        Some(x) if x == "application/json" => Some(x),
+        _ => None,
+    };
+
+    if result.is_some() {
+        // Send json of the fronting member back to the client
+        Ok(Response::from_status(StatusCode::OK)
+            .with_body_json(&species)
+            .expect("We are able to parse the JSON back")
+            .with_content_type(mime::APPLICATION_JSON))
+    } else {
+        //Display who is fronting in a nice page
+        return Ok(Response::from_status(StatusCode::OK)
+            .with_content_type(mime::TEXT_HTML_UTF_8)
+            .with_body_text_html(
+                format!(
+                    " <head> <meta charset=\"UTF-8\">
+                    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">
+                    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+                    <title>Document</title>
+                    </head>
+                    <body>
+                    <p>\"Ellen is currently a: {}!\"</p>
+                    </body>
+                    </html>",
+                    species.as_str()
                 )
                 .as_str(),
             ));
