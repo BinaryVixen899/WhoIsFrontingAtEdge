@@ -23,3 +23,6 @@ It is reccomended to use the [Fastly CLI](https://github.com/fastly/cli) for thi
 ## Security issues
 
 Please see our [SECURITY.md](SECURITY.md) for guidance on reporting security-related issues.
+
+## TODO
+* Change this whole thing to use webhooks!
