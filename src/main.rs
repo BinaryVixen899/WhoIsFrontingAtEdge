@@ -1,7 +1,7 @@
 //! Adapted from the Default Compute@Edge template program.
 
-use fastly::http::{header, Method, StatusCode, request};
-use fastly::{mime, Error, Request, Response, Backend};
+use fastly::http::{header, request, Method, StatusCode};
+use fastly::{mime, Backend, Error, Request, Response};
 
 #[derive(serde::Deserialize)]
 struct Pkdata {
@@ -17,7 +17,8 @@ struct Pkmember {
 }
 
 #[fastly::main]
-fn main(req: Request) -> Result<Response, Error> {{}
+fn main(req: Request) -> Result<Response, Error> {
+    {}
     // Define backend names
     const PLURALKIT_BACKEND: &str = "pluralkit";
 
@@ -46,10 +47,7 @@ fn main(req: Request) -> Result<Response, Error> {{}
                 .with_content_type(mime::TEXT_HTML_UTF_8)
                 .with_body(include_str!("butnothinghappened.html")))
         }
-        "/fronting" => {
-            fronting(PLURALKIT_BACKEND, &req)
-
-        }
+        "/fronting" => fronting(PLURALKIT_BACKEND, &req),
 
         // Catch all other requests and return a magikarp 404.
         _ => Ok(Response::from_status(StatusCode::NOT_FOUND)
@@ -61,61 +59,61 @@ fn main(req: Request) -> Result<Response, Error> {{}
 
 fn fronting(backend: &'static str, req: &Request) -> Result<Response, Error> {
     let bereq = Request::get("https://api.pluralkit.me/v2/systems/rzwbg/fronters")
-    // sadly pluralkit does not support 304s
-    .with_pass(true)
-    .with_header("accept", "*/*")
-    .with_header("host", "api.pluralkit.me");
+        // sadly pluralkit does not support 304s
+        .with_pass(true)
+        .with_header("accept", "*/*")
+        .with_header("host", "api.pluralkit.me");
 
-let beresp = bereq.send(backend);
+    let beresp = bereq.send(backend);
 
-// Checking for Send Errors
-if let Err(e) = beresp {
-    // Log what we encountered
-    eprintln!("We've encountered a send error {}:", e);
-    // Clearly state it's not our fault
-    return Ok(Response::from_status(StatusCode::BAD_GATEWAY));
-}
-// otherwise.. (we should never hit this)
-let mut beresp = beresp.expect("To have handled an invalid send");
+    // Checking for Send Errors
+    if let Err(e) = beresp {
+        // Log what we encountered
+        eprintln!("We've encountered a send error {}:", e);
+        // Clearly state it's not our fault
+        return Ok(Response::from_status(StatusCode::BAD_GATEWAY));
+    }
+    // otherwise.. (we should never hit this)
+    let mut beresp = beresp.expect("To have handled an invalid send");
 
-// if we got a successful response
-if !beresp.get_status().is_success() {
-    eprintln!(
-        "Instead of giving us a 200, PK gave us a {}",
-        beresp.get_status()
-    );
-    return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
-}
+    // if we got a successful response
+    if !beresp.get_status().is_success() {
+        eprintln!(
+            "Instead of giving us a 200, PK gave us a {}",
+            beresp.get_status()
+        );
+        return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
+    }
 
-// parse the json 
-let my_data = beresp.take_body_json::<Pkdata>();
-if let Err(e) = my_data {
-    eprintln!("JSON PARSING FAILURE: {}", e);
-    return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
-}
+    // parse the json
+    let my_data = beresp.take_body_json::<Pkdata>();
+    if let Err(e) = my_data {
+        eprintln!("JSON PARSING FAILURE: {}", e);
+        return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
+    }
 
-// We should never hit this 
-let my_data = my_data.expect("To have handled a case in which we had bad JSON data");
+    // We should never hit this
+    let my_data = my_data.expect("To have handled a case in which we had bad JSON data");
 
-// So now we just need to handle this differently depending on if its someone asking for json or not
-let result = match req.get_header("Accept") {
-    Some(x) if x == "application/json" => Some(x),
-    _ => None,
-};
+    // So now we just need to handle this differently depending on if its someone asking for json or not
+    let result = match req.get_header("Accept") {
+        Some(x) if x == "application/json" => Some(x),
+        _ => None,
+    };
 
-if result.is_some() {
-    // Send json of the fronting member back to the client
-    Ok(Response::from_status(StatusCode::OK)
-        .with_body_json(&my_data.members[0].name)
-        .expect("We are able to parse the JSON back")
-        .with_content_type(mime::APPLICATION_JSON))
-} else {
-    //Display who is fronting in a nice page
-    return Ok(Response::from_status(StatusCode::OK)
-        .with_content_type(mime::TEXT_HTML_UTF_8)
-        .with_body_text_html(
-            format!(
-                " <head> <meta charset=\"UTF-8\">
+    if result.is_some() {
+        // Send json of the fronting member back to the client
+        Ok(Response::from_status(StatusCode::OK)
+            .with_body_json(&my_data.members[0].name)
+            .expect("We are able to parse the JSON back")
+            .with_content_type(mime::APPLICATION_JSON))
+    } else {
+        //Display who is fronting in a nice page
+        return Ok(Response::from_status(StatusCode::OK)
+            .with_content_type(mime::TEXT_HTML_UTF_8)
+            .with_body_text_html(
+                format!(
+                    " <head> <meta charset=\"UTF-8\">
 <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">
 <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
 <title>Document</title>
@@ -124,10 +122,9 @@ if result.is_some() {
 <p>\"The current fronter is: {alter}!\"</p>
 </body>
 </html>",
-                alter = my_data.members[0].name
-            )
-            .as_str(),
-        ));
+                    alter = my_data.members[0].name
+                )
+                .as_str(),
+            ));
+    }
 }
-}
-    
