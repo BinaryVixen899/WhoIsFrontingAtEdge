@@ -1,7 +1,20 @@
 //! Adapted from the Default Compute@Edge template program.
+/* 
+BAD CODE BELOW
+THIS IS AN EXPERIMENT TO SEE IF I CAN GET THIS TO WORK 
+DO NOT UNDER ANY CIRCUMSTANCES USE BLOCKON IN AN EVENT LOOP
+JUST DON'T
+
+ */
+use std::str::FromStr;
+
 
 use fastly::http::{header, request, Method, StatusCode};
 use fastly::{mime, object_store, Backend, Error, ObjectStore, Request, Response};
+use notion::NotionApi;
+use dotenv;
+use notion::ids::{PageId, BlockId};
+use futures::executor; 
 
 #[derive(serde::Deserialize)]
 struct Pkdata {
@@ -19,6 +32,7 @@ struct Pkmember {
 #[fastly::main]
 fn main(req: Request) -> Result<Response, Error> {
     {}
+    dotenv::dotenv().ok();
     // Define backend names
     const PLURALKIT_BACKEND: &str = "pluralkit";
 
@@ -34,7 +48,7 @@ fn main(req: Request) -> Result<Response, Error> {
                 .with_body_text_plain("This method is not allowed\n"))
         }
     };
-
+    
     // Pattern match on the path...
     match req.get_path().to_lowercase().as_str() {
         // Make incoming string lowercase
@@ -48,16 +62,19 @@ fn main(req: Request) -> Result<Response, Error> {
                 .with_body(include_str!("butnothinghappened.html")))
         }
         "/fronting" => fronting(PLURALKIT_BACKEND, &req),
-
-        "/species" => species(&req),
-
+        
+        "/species" => {
+            let v = executor::block_on(species(&req));
+            v
+        },
         // Catch all other requests and return a magikarp 404.
         _ => Ok(Response::from_status(StatusCode::NOT_FOUND)
             .with_content_type(mime::TEXT_HTML_UTF_8)
             // .with_body_text_html(format!("test {alter}", alter = "test").as_str()))
             .with_body(include_str!("magikarp.html"))),
     }
-}
+    }
+
 
 fn fronting(backend: &'static str, req: &Request) -> Result<Response, Error> {
     let bereq = Request::get("https://api.pluralkit.me/v2/systems/rzwbg/fronters")
@@ -131,21 +148,9 @@ fn fronting(backend: &'static str, req: &Request) -> Result<Response, Error> {
     }
 }
 
-fn species(req: &Request) -> Result<Response, Error> {
-    let foxbox = ObjectStore::open("foxbox").expect("We got an objectstore!");
-    let foxbox = foxbox.expect("The objectstore exists!");
-    let species = match foxbox.lookup("Species") {
-        Ok(s) => match s {
-            Some(s) => s.into_string(),
-
-            None => {
-                return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
-            }
-        },
-        Err(e) => {
-            return Ok(Response::from_status(StatusCode::SERVICE_UNAVAILABLE));
-        }
-    };
+async fn species(req: &Request) -> Result<Response, Error> {
+   
+   let species = getspecies().await;
 
     let result = match req.get_header("Accept") {
         Some(x) if x == "application/json" => Some(x),
@@ -179,3 +184,30 @@ fn species(req: &Request) -> Result<Response, Error> {
             ));
     }
 }
+
+async fn getspecies() -> String {
+    // I don't know if this will work... Let's see how much Fastly will let me get away with! 
+    let api_token = "NotionApiToken";
+    let api_token = dotenv::var(api_token).unwrap();
+    let notion  = NotionApi::new(api_token).expect("We were able to authenticate to Notion");
+    let speciesblockid = BlockId::from_str("").expect("We got a valid BlockID!");
+    
+    let speciesblock = notion.get_block_children(speciesblockid).await.expect("We were able to get the block children");
+    let test = speciesblock.results;
+    
+        let species = match test[1].clone() {
+            notion::models::Block::Heading1 {heading_1, common} => {
+              let text = heading_1.rich_text[0].clone();
+              text.plain_text().to_string()
+            },
+            _ => {
+                "Kitsune".to_string()
+            }
+            };
+        
+        species
+            
+        
+    }
+    
+    
